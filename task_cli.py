@@ -1,9 +1,11 @@
 import datetime as dt
+from enum import Enum
 import json
 import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Literal
 
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -14,6 +16,12 @@ CD = Path(__file__).parent
 APP_DIR = HOME / ".task_cli"
 APP_DIR.mkdir(exist_ok=True)
 JSON_PATH = APP_DIR / "tasks_tracker.json"
+
+
+class TaskStatus(str, Enum):
+    TODO = "todo"
+    IN_PROGRESS = "in-progress"
+    DONE = "done"
 
 
 @dataclass
@@ -111,6 +119,15 @@ class TaskManager:
         self.tasks.remove(task)
         self.save()
 
+    def set_status(self, id: int, status: TaskStatus) -> None:
+        if not isinstance(status, TaskStatus):
+            raise ValueError("Status should be one of 'todo', 'in-progress' or 'done'.")
+
+        task = self._get_task(id)
+        task.status = status
+        self.save()
+        logger.info(f"Task {id} marked as {status.value}.")
+
 
 def main():
     task_manager = TaskManager()
@@ -133,6 +150,17 @@ def main():
             task_id = int(sys.argv[2])
             task_manager.delete(task_id)
             logger.info(f"Task {task_id} deleted successfully.")
+        elif action.startswith("mark-"):
+            raw_status = action[5:]
+            try:
+                task_status = TaskStatus(raw_status)
+            except ValueError:
+                logger.error(
+                    f"Invalid status '{raw_status}'. Must be one of {[s.value for s in TaskStatus]}."
+                )
+                return
+            task_id = int(sys.argv[2])
+            task_manager.set_status(task_id, task_status)
         else:
             logger.error(f"Unknown action '{action}'")
 
