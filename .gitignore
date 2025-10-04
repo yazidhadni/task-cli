@@ -2,6 +2,10 @@
 .env
 .venv
 
+# Build artifacts
+dist/
+*.egg-info/
+
 # mac
 .DS_Store
 

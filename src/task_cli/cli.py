@@ -5,7 +5,6 @@ import logging
 import sys
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Literal
 
 
 logging.basicConfig(level=logging.INFO, format="%(message)s")
@@ -128,6 +127,12 @@ class TaskManager:
         self.save()
         logger.info(f"Task {id} marked as {status.value}.")
 
+    def list_tasks(self) -> list[str]:
+        tasks = [
+            f"{task.id}: {task.description} - {task.status}" for task in self.tasks
+        ]
+        return tasks
+
 
 def main():
     task_manager = TaskManager()
@@ -161,6 +166,9 @@ def main():
                 return
             task_id = int(sys.argv[2])
             task_manager.set_status(task_id, task_status)
+        elif action == "list":
+            tasks = task_manager.list_tasks()
+            print("\n".join(tasks))
         else:
             logger.error(f"Unknown action '{action}'")
 
