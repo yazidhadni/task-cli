@@ -1,0 +1,14 @@
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "task-cli"
+version = "0.1.0"
+readme = "README.md"
+description = "A simple CLI tool for tasks"
+requires-python = ">=3.9"
+dependencies = []
+
+[project.scripts]
+task-cli = "task_cli.cli:main"
