@@ -1,6 +1,6 @@
 # Task Tracker CLI
 
-A simple command-line interface (CLI) application to track and manage your tasks and to-do list. This tool lets you add, update, delete, and mark tasks as in progress or done, while keeping your data persistent in a JSON file.  
+The goal of this project is to understand how to A simple command-line interface (CLI) application to track and manage your tasks and to-do list. This tool lets you add, update, delete, and mark tasks as in progress or done, while keeping your data persistent in a JSON file.  
 
 ---
 
@@ -33,7 +33,7 @@ Each task includes:
 - CLI handles invalid IDs and missing arguments gracefully.
 
 ## Next Steps (Planned)
-- Mark tasks as in-progress or done
+[x] Mark tasks as in-progress or done
 - List tasks filtered by status
-- Add a list command to display all tasks
+[x] Add a list command to display all tasks
 - Improve CLI UX with argument validation and help command
