@@ -1,8 +1,8 @@
+import argparse
 import datetime as dt
 from enum import Enum
 import json
 import logging
-import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -11,7 +11,6 @@ logging.basicConfig(level=logging.INFO, format="%(message)s")
 logger = logging.getLogger(__name__)
 
 HOME = Path.home()
-CD = Path(__file__).parent
 APP_DIR = HOME / ".task_cli"
 APP_DIR.mkdir(exist_ok=True)
 JSON_PATH = APP_DIR / "tasks_tracker.json"
@@ -27,7 +26,7 @@ class TaskStatus(str, Enum):
 class Task:
     id: int
     description: str
-    status: str = "todo"
+    status: TaskStatus = TaskStatus.TODO
     created_at: dt.datetime = field(default_factory=dt.datetime.now)
     updated_at: dt.datetime = field(default_factory=dt.datetime.now)
 
@@ -90,12 +89,12 @@ class TaskManager:
         }
         self._write_data(data)
 
-    def add(self, description: str) -> None:
+    def add(self, description: str) -> Task:
         self.last_id += 1
         task = Task(id=self.last_id, description=description)
         self.tasks.append(task)
         self.save()
-        logger.info(f"Task added successfully (ID: {task.id})")
+        return task
 
     def _get_task(self, id: int) -> Task:
         if not self.tasks:
@@ -107,25 +106,27 @@ class TaskManager:
                 return task
         raise ValueError(f"No task found with ID {id}.")
 
-    def update(self, id: int, description: str) -> None:
+    def update(self, id: int, description: str) -> Task:
         task = self._get_task(id)
         task.description = description
         task.updated_at = dt.datetime.now()
         self.save()
+        return task
 
-    def delete(self, id: int) -> None:
+    def delete(self, id: int) -> Task:
         task = self._get_task(id)
         self.tasks.remove(task)
         self.save()
+        return task
 
-    def set_status(self, id: int, status: TaskStatus) -> None:
+    def set_status(self, id: int, status: TaskStatus) -> Task:
         if not isinstance(status, TaskStatus):
             raise ValueError("Status should be one of 'todo', 'in-progress' or 'done'.")
 
         task = self._get_task(id)
         task.status = status
         self.save()
-        logger.info(f"Task {id} marked as {status.value}.")
+        return task
 
     def list_tasks(self) -> list[str]:
         tasks = [
@@ -134,51 +135,65 @@ class TaskManager:
         return tasks
 
 
+def log_verbose(message: str, verbose: bool):
+    if verbose:
+        logger.info(message)
+
+
 def main():
     task_manager = TaskManager()
-    try:
-        action = sys.argv[1]
-    except IndexError:
-        logger.error("No action provided. Usage: task_cli <action> [args]")
-        return
 
-    try:
-        if action == "add":
-            description = sys.argv[2]
-            task_manager.add(description=description)
-        elif action == "update":
-            task_id = int(sys.argv[2])
-            description = sys.argv[3]
-            task_manager.update(task_id, description)
-            logger.info(f"Task {task_id} updated successfully.")
-        elif action == "delete":
-            task_id = int(sys.argv[2])
-            task_manager.delete(task_id)
-            logger.info(f"Task {task_id} deleted successfully.")
-        elif action.startswith("mark-"):
-            raw_status = action[5:]
-            try:
-                task_status = TaskStatus(raw_status)
-            except ValueError:
-                logger.error(
-                    f"Invalid status '{raw_status}'. Must be one of {[s.value for s in TaskStatus]}."
-                )
-                return
-            task_id = int(sys.argv[2])
-            task_manager.set_status(task_id, task_status)
-        elif action == "list":
-            tasks = task_manager.list_tasks()
-            print("\n".join(tasks))
-        else:
-            logger.error(f"Unknown action '{action}'")
+    parser = argparse.ArgumentParser(
+        description="Task CLI: manage your tasks from the terminal"
+    )
+    parser.add_argument(
+        "-v", "--verbose", action="store_true", help="Enable verbose logging"
+    )
 
-    except ValueError as e:
-        # This will catch invalid task IDs or missing tasks
-        logger.error(f"Error: {e}")
+    subparsers = parser.add_subparsers(dest="command", required=True)
+    # add
+    add_parser = subparsers.add_parser("add", help="Add new task")
+    add_parser.add_argument("description", help="Description of the task")
+    # update
+    update_parser = subparsers.add_parser("update", help="Update task")
+    update_parser.add_argument("id", type=int, help="ID of the task")
+    update_parser.add_argument("description", help="Description of the task")
+    # delete
+    delete_parser = subparsers.add_parser("delete", help="Delete task")
+    delete_parser.add_argument("id", type=int, help="ID of the task")
+    # list
+    subparsers.add_parser("list", help="List all tasks")
+    # mark: change task status
+    mark_parser = subparsers.add_parser("mark", help="change task status")
+    mark_parser.add_argument("id", type=int, help="ID of the task")
+    mark_parser.add_argument(
+        "status",
+        choices=["todo", "in-progress", "done"],
+        help="Status to mark the task",
+    )
 
-    except IndexError:
-        # This will catch missing arguments
-        logger.error("Missing arguments for the action.")
+    args = parser.parse_args()
+
+    if args.command == "add":
+        task = task_manager.add(args.description)
+        log_verbose(f"Task added successfully (ID: {task.id}).", args.verbose)
+
+    elif args.command == "update":
+        task = task_manager.update(id=args.id, description=args.description)
+        log_verbose(f"Task {task.id} updated successfully.", args.verbose)
+
+    elif args.command == "delete":
+        task = task_manager.delete(args.id)
+        log_verbose(f"Task {task.id} deleted successfully.", args.verbose)
+
+    elif args.command == "list":
+        tasks = task_manager.list_tasks()
+        print("\n".join(tasks))
+        log_verbose(f"Listed {len(tasks)} tasks", args.verbose)
+
+    elif args.command == "mark":
+        task = task_manager.set_status(id=args.id, status=TaskStatus(args.status))
+        log_verbose(f"Task {task.id} marked as {task.status.value}", args.verbose)
 
 
 if __name__ == "__main__":
